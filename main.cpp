@@ -22,11 +22,72 @@ int               width = 800,
 
 Crowd *cellularAutomata = NULL;
 // Função de visualização
+void cellularAutomataRender(void){
+
+      double dX = 0.0f,
+            dY = 0.0f,
+            r  = 0.0f,
+            g  = 0.0f,
+            b  = 0.0f;
+      int type = GL_LINE_LOOP;
+
+
+      //glScalef(, mScaleY, 1.0f);
+
+      for (int j = 0; j < cellularAutomata->getCellY(); j++){
+          for (int i = 0; i < cellularAutomata->getCellX(); i++){
+              glPushMatrix();
+              glTranslatef(dX, dY, 0.0f);
+              int value = cellularAutomata->getCellValue(i, j);
+              if (value == Crowd::empty){
+                  type = GL_LINE_LOOP;
+                  r = 0.0f;
+                  g = 0.0f;
+                  b = 0.0f;
+
+
+              }else if (value == Crowd::wall) {
+                type = GL_QUADS;
+                r = 1.0f;
+                g = 1.0f;
+                b = 1.0f;
+
+              }else if (value == Crowd::door) {
+                type = GL_QUADS;
+                r = 0.0f;
+                g = 1.0f;
+                b = 0.0f;
+              }else{ //if (mCurrentState[p] == person) {
+                type = GL_QUADS;
+                r = 1.0f;
+                g = 1.0f;
+                b = 0.0f;
+              }
+              glBegin(type); //GL_QUADS);GL_LINE_LOOP
+              glColor3f(r, g, b);
+              glVertex3f(0.0f, 0.0f, 0.0f);
+              glVertex3f(0.0f, -cellularAutomata->getScaleY(), 0.0f);
+              glVertex3f(cellularAutomata->getScaleX(), -cellularAutomata->getScaleY(), 0.0f);
+              glVertex3f(cellularAutomata->getScaleX(), 0.0f, 0.0f);
+
+
+              glEnd();
+              glPopMatrix();
+              dX += cellularAutomata->getScaleX();
+
+          }
+          dY -= cellularAutomata->getScaleY();
+          dX = 0.0f;
+
+      }
+
+
+}
 void render(void){
     glClear(GL_COLOR_BUFFER_BIT);
 
 
-    cellularAutomata->render();
+    cellularAutomataRender();
 
     float delta  = 0.0f;
     glColor3f(0.0f, 0.0f, 1.0f);
@@ -160,7 +221,7 @@ void mainloop(void){
 int main(int argc, char**argv){
 
 
-    cellularAutomata = new Crowd("board2.txt");
+    cellularAutomata = new Crowd("board3.txt");
     START_STOPWATCH(stopwatch);
 
     glutInit(&argc, argv);

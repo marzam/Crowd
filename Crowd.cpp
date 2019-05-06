@@ -9,17 +9,19 @@
 #include <cstdlib>
 #include <cassert>
 #include <cmath>
+#include <climits>
 using namespace std;
 
 //------------------------------------------------------------------------------
 Crowd::Crowd(std::string fileName):
 mDistance(1),
-mCurrentState(NULL),
 mBoard(NULL),
 mPeople(NULL),
 mTimeStep(0),
-mCount(0){
+mCount(0),
+mMesh(NULL){
 
+  srand (time(NULL));
   FILE *ptr = NULL;
   ptr = fopen(fileName.c_str(), "r");
   assert(ptr!=NULL);
@@ -29,7 +31,7 @@ mCount(0){
   fscanf(ptr, "%d", &mNPeople);
   cout << "(" << mCellX << "," << mCellY << " | " << mNPeople << ")" << endl;
 
-  assert(posix_memalign((void**)&mCurrentState, ALIGN, mCellX * mCellY * sizeof(int)) == 0);
+  assert(posix_memalign((void**)&mMesh, ALIGN, mCellX * mCellY * sizeof(uintptr_t)) == 0);
   assert(posix_memalign((void**)&mBoard, ALIGN,  mCellX * mCellY * sizeof(int)) == 0);
   assert(posix_memalign((void**)&mPeople, ALIGN,  mNPeople * sizeof(stEntity)) == 0);
 
@@ -55,11 +57,13 @@ mCount(0){
     mPeople[i].alive = true;
   }
 
+  initialCondition();
+
 }
 Crowd::~Crowd(){
-  if (mCurrentState != NULL){
-    free(mCurrentState);
-    mCurrentState = NULL;
+  if (mMesh != NULL){
+    free(mMesh);
+    mMesh = NULL;
 
   }
 
@@ -80,6 +84,25 @@ Crowd::~Crowd(){
 
 void Crowd::initialCondition(void){
 
+      int k = 0;
+      for (int j = 0; j < mCellY; j++){
+          for (int i = 0; i < mCellX; i++){
+              int p = j * mCellX + i;
+              if (mBoard[p] == door){
+                mDoor.x = i; mDoor.y = j;
+              }//end- if (mBoard[p] == door){
+
+              if (mBoard[p] == person){
+                assert(k < mNPeople);
+                mPeople[k].x = i;  mPeople[k].y = j;
+                mBoard[p] = 0;
+                k++;
+              }
+
+              mMesh[p] = mBoard[p];
+          }//end-for (int i = 0; i < mCellX; i++){
+      }//end-for (int j = 0; j < mCellY; j++){
+      update();
   /*
     for (int j = 0 ; j < mCellY; j++){
         for (int i = 0; i < mCellX; i++){
@@ -117,7 +140,7 @@ double Crowd::getStaticDynamicField(const int i, const int j){
     int   r = mDistance;
     double E = 0.0f;
 
-    if ((mCurrentState[j * mCellX + i] == empty) || (mCurrentState[j * mCellX + i] == door))
+    if ((mMesh[j * mCellX + i] == empty) || (mMesh[j * mCellX + i] == door))
       E = 1.0f;
 
     for (int rj = -r; rj <= r; rj++){
@@ -127,11 +150,11 @@ double Crowd::getStaticDynamicField(const int i, const int j){
           int p = (pj * mCellX) + pi;
           if ((pi >= 0) && (pi < mCellX) && (pj >= 0) && (pj < mCellY)){
             if ((ri != 0) || (rj != 0)){
-              if (mCurrentState[p] == empty)
+              if (mMesh[p] == empty)
                 d++;
-              if (mCurrentState[p] != wall)
+              if (mMesh[p] != wall)
                 o++;
-              if (mCurrentState[p] != door)
+              if (mMesh[p] != door)
                 e++;
             }//end-if ((ri != 0) && (rj != 0)){
           }//end-  if ((pi >= 0) && (pi < mCellX) && (pj >= 0) && (pj < mCellY)){
@@ -171,6 +194,8 @@ void Crowd::applyRule(void){
     if (mPeople[index].alive){
       int u = mPeople[index].x;
       int v = mPeople[index].y;
+      mPeople[index].prob = myRand();
+
       //finding the center cell. In this case, it is 3x3
       int aux_i = 1;
       int aux_j = 1;
@@ -248,24 +273,55 @@ void Crowd::applyRule(void){
 
 void Crowd::update(void){
   mTimeStep++;
-  memcpy(mCurrentState, mBoard, sizeof(int)*mCellX*mCellY);
+  for (int i = 0; i < mCellX*mCellY; i++){
+    mMesh[i] = static_cast<uintptr_t>(mBoard[i]);
+  }
 
   for (int index = 0; index < mNPeople; index++){
-    mPeople[index].x += mPeople[index].vx;
-    mPeople[index].y += mPeople[index].vy;
-    mPeople[index].vx = 0;
-    mPeople[index].vy = 0;
+    stEntity *ptrPerson = &mPeople[index];
+    ptrPerson->x0  = ptrPerson->x;
+    ptrPerson->y0  = ptrPerson->y;
+
+    ptrPerson->x += ptrPerson->vx;
+    ptrPerson->y += ptrPerson->vy;
+    ptrPerson->vx = 0;
+    ptrPerson->vy = 0;
     //cout << index << "(" << mPeople[index].x << "," << mPeople[index].y << ") " << mDoor.x << "," << mDoor.y << endl;
-    if ((mPeople[index].x == mDoor.x) && (mPeople[index].y == mDoor.y) && (mPeople[index].alive)){
-      mPeople[index].alive = false;
+    if ((ptrPerson->x == mDoor.x) && (ptrPerson->y == mDoor.y) && (ptrPerson->alive)){
+      ptrPerson->alive = false;
       mCount++;
     }
 
-    if (mPeople[index].alive){
-      int p = mPeople[index].y * mCellX + mPeople[index].x;
-      assert(mCurrentState[p] != person);
-      mCurrentState[p] = person;
-    }
+    if (ptrPerson->alive){
+
+      int p1 = ptrPerson->y * mCellX + ptrPerson->x;
+      if (mMesh[p1] == empty){
+        mMesh[p1] = reinterpret_cast<uintptr_t> (ptrPerson);
+      }else{
+        uintptr_t v = mMesh[p1];
+        if ((v != wall) && (v != door)){
+          stEntity *ptrPerson2 = reinterpret_cast<stEntity*>(v);
+          if (ptrPerson->prob > ptrPerson2->prob){
+            stEntity *aux = ptrPerson;
+            ptrPerson = ptrPerson2;
+            ptrPerson2 = aux;
+          }
+          ptrPerson->x = ptrPerson->x0;
+          ptrPerson->y = ptrPerson->y0;
+          int p2 = ptrPerson->y * mCellX + ptrPerson->x;
+          mMesh[p2] = reinterpret_cast<uintptr_t> (ptrPerson);
+        }else{
+            if (v == wall){
+              ptrPerson->x = ptrPerson->x0;
+              ptrPerson->y = ptrPerson->y0;
+              int p2 = ptrPerson->y * mCellX + ptrPerson->x;
+              mMesh[p2] = reinterpret_cast<uintptr_t> (ptrPerson);  
+            }else
+              exit(-1);
+        }//end-if (v != wall) && (v != door){
+
+      }//end-  if (mMesh[p1] == empty){
+    }//end-if (ptrPerson->alive){
 
   }//end-for (int i = 0; i < mNPeople; i++){
 
@@ -275,93 +331,18 @@ void Crowd::update(void){
 
 };
 void Crowd::clear(void){
-    bzero(mCurrentState, sizeof(int)*mCellX*mCellY);
+    bzero(mMesh, sizeof(uintptr_t)*mCellX*mCellY);
     bzero(mPeople, sizeof(stEntity)*mNPeople);
 
-    memcpy(mCurrentState, mBoard, sizeof(int)*mCellX*mCellY);
-
-    int k = 0;
-    for (int j = 0; j < mCellY; j++){
-        for (int i = 0; i < mCellX; i++){
-            int p = j * mCellX + i;
-            if (mBoard[p] == door){
-              mDoor.x = i; mDoor.y = j;
-            }//end- if (mBoard[p] == door){
-
-            if (mBoard[p] == person){
-              assert(k < mNPeople);
-              mPeople[k].x = i;  mPeople[k].y = j;
-              mBoard[p] = 0;
-              k++;
-            }
-        }//end-for (int i = 0; i < mCellX; i++){
-    }//end-for (int j = 0; j < mCellY; j++){
 
 };
 
 
 
-void Crowd::render(void){
-
-    double dX = 0.0f,
-          dY = 0.0f,
-          r  = 0.0f,
-          g  = 0.0f,
-          b  = 0.0f;
-    int type = GL_LINE_LOOP;
 
 
-    //glScalef(, mScaleY, 1.0f);
-
-    for (int j = 0; j < mCellY; j++){
-        for (int i = 0; i < mCellX; i++){
-            glPushMatrix();
-            glTranslatef(dX, dY, 0.0f);
-            int p = (mCellX * j) + i;
-            if (mCurrentState[p] == empty){
-                type = GL_LINE_LOOP;
-                r = 0.0f;
-                g = 0.0f;
-                b = 0.0f;
-
-
-            }else if (mCurrentState[p] == wall) {
-              type = GL_QUADS;
-              r = 1.0f;
-              g = 1.0f;
-              b = 1.0f;
-
-            }else if (mCurrentState[p] == door) {
-              type = GL_QUADS;
-              r = 0.0f;
-              g = 1.0f;
-              b = 0.0f;
-            }else if (mCurrentState[p] == person) {
-              type = GL_QUADS;
-              r = 1.0f;
-              g = 1.0f;
-              b = 0.0f;
-            }
-            glBegin(type); //GL_QUADS);GL_LINE_LOOP
-            glColor3f(r, g, b);
-            glVertex3f(0.0f, 0.0f, 0.0f);
-            glVertex3f(0.0f, -mScaleY, 0.0f);
-            glVertex3f(mScaleX, -mScaleY, 0.0f);
-            glVertex3f(mScaleX, 0.0f, 0.0f);
-
-
-            glEnd();
-            glPopMatrix();
-            dX += mScaleX;
-
-        }
-        dY -= mScaleY;
-        dX = 0.0f;
-
-    }
-
-
+float Crowd::myRand(void){
+  return static_cast <float> (rand() % INT_MAX + 1) / static_cast <float> (INT_MAX);
 
 };
-
 //Constructor
