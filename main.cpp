@@ -126,8 +126,8 @@ void keyboardEvent(unsigned char key, int x, int y)
 {
      glutPostRedisplay();
     switch (key) {
-        case 'b':
-        case 'B':
+        case 'p':
+        case 'P':cellularAutomata->printProb(0);
 
             break;
 
@@ -149,6 +149,7 @@ void keyboardEvent(unsigned char key, int x, int y)
         case 'S':
             cellularAutomata->applyRule();
             cellularAutomata->update();
+
             break;
 
 
@@ -221,7 +222,7 @@ void mainloop(void){
 int main(int argc, char**argv){
 
 
-    cellularAutomata = new Crowd("board3.txt");
+    cellularAutomata = new Crowd("board.txt");
     START_STOPWATCH(stopwatch);
 
     glutInit(&argc, argv);

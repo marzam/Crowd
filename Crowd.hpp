@@ -9,7 +9,7 @@ struct stEntity{
 
   bool alive;
 
-  int x0, y0, x, y, vx, vy;
+  int id, stopET, x0, y0, x, y, vx, vy;
   float prob;
 };
 
@@ -24,6 +24,7 @@ private:
   double getStaticDynamicField(const int, const int);
 public:
   enum STATES{empty, wall, door, person};
+  enum PERSON{walking, stopped, passed, dieded}; //states of person. In door cell
 
    Crowd(std::string );
     ~Crowd();
@@ -45,9 +46,11 @@ public:
     int getCellValue(int i, int j)
                             { return static_cast<int>(this->mMesh[j * this->mCellX + i]);}
     float myRand(void);
+    void printProb(int);
 //    void insertPerson(void);
 //    void removePerson(void);
   protected:
+    void saveLog(void);
     int mCellX,
         mCellY,
        *mBoard,
