@@ -19,7 +19,7 @@ float             FPS = 0.0f;
 int               width = 800,
                   height = 600,
                   mCurrentTimeStep = 0;
-
+bool     isRunning = false;
 Crowd *cellularAutomata = NULL;
 // Função de visualização
 void cellularAutomataRender(void){
@@ -126,11 +126,21 @@ void keyboardEvent(unsigned char key, int x, int y)
 {
      glutPostRedisplay();
     switch (key) {
+        case 'd':
+        case 'D': cellularAutomata->debug();
+        break;
         case 'p':
         case 'P':cellularAutomata->printProb(0);
 
             break;
 
+        case '-':
+          cerr << "NOP" << endl;
+        break;
+        case '+':
+        cellularAutomata->applyRule();
+        cellularAutomata->update();
+        break;
         case 'e':
         case 'E':
 
@@ -147,8 +157,7 @@ void keyboardEvent(unsigned char key, int x, int y)
 
         case 's':
         case 'S':
-            cellularAutomata->applyRule();
-            cellularAutomata->update();
+            isRunning = !isRunning;
 
             break;
 
@@ -209,11 +218,17 @@ void viewPort(int w, int h){
 
 //Loop principal da visualização
 void mainloop(void){
+
+
+    if (isRunning){
+      cellularAutomata->applyRule();
+      cellularAutomata->update();
+    }
     glutPostRedisplay();
 
-   char msg[1024];
-   sprintf(msg, "Crowd\t %d/%d", cellularAutomata->getCount(), cellularAutomata->getTimeStep());
-   glutSetWindowTitle(msg);
+    char msg[1024];
+    sprintf(msg, "Crowd\t %d/%d", cellularAutomata->getCount(), cellularAutomata->getTimeStep());
+    glutSetWindowTitle(msg);
 
 
 }
@@ -222,13 +237,14 @@ void mainloop(void){
 int main(int argc, char**argv){
 
 
-    cellularAutomata = new Crowd("board.txt");
+    cellularAutomata = new Crowd("board4.txt");
+    cellularAutomata->setBeta(8.0f, 4.0f);
     START_STOPWATCH(stopwatch);
 
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
     glutInitWindowSize(width, height);
-    glutCreateWindow("Cellular Automata - Game of life");
+    glutCreateWindow("Cellular Automata");
     glutDisplayFunc(render);
     glutReshapeFunc(viewPort);
     glutMouseFunc(mouseEvent);

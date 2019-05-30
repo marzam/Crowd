@@ -11,11 +11,15 @@
 EXEFILE     = CA
 VERSION     = -D_VERSION=\"0.01\"
 APPLICATION = -D_APPLICATION=\"$(EXEFILE)\"
-CPUCC     = g++
+CPUCC     = /opt/intel/bin/icc #g++
+#CPUCC     =  g++
+#CPPFLAGS  = -Ofast -std=c++11 #-g -std=c++11
 CPPFLAGS  = -g -std=c++11
 DEFS      =  -DALIGN=64
 
 INCLUDES  = -I.                           \
+            -I/opt/intel/include \
+						-I/usr/include/x86_64-linux-gnu \
             -I/opt/glew/include \
             -I/usr/include/GL
 

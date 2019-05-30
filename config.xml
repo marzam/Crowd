@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<config>
+    <cell_x></cell_x>
+    <cell_y></cell_y>
+    <n_doors></n_doors>
+    <logFile></logFile>
+    <random><beta alpha="8" beta="4"></random>
+</config>
+
